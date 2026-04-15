@@ -1,11 +1,11 @@
 # Dune Analytics: Stablecoin Flow Pipeline
 
-Multi-Chain Stablecoin-Tracking-Pipeline fuer [Dune Analytics](https://dune.com). Trackt Transfers, Volumen, Supply, Bridge-Flows und Whale-Aktivitaet der wichtigsten Stablecoins ueber 7+ EVM-Chains.
+Multi-chain stablecoin tracking pipeline for [Dune Analytics](https://dune.com). Tracks transfers, volume, supply, bridge flows, and whale activity for major stablecoins across 7+ EVM chains.
 
-## Unterstuetzte Stablecoins
+## Supported Stablecoins
 
-| Symbol | Issuer | Typ | Chains |
-|--------|--------|-----|--------|
+| Symbol | Issuer | Type | Chains |
+|--------|--------|------|--------|
 | USDT | Tether | Centralized | Ethereum, BNB, Polygon, Arbitrum, Optimism, Avalanche, Base |
 | USDC | Circle | Centralized | Ethereum, BNB, Polygon, Arbitrum, Optimism, Avalanche, Base |
 | DAI | MakerDAO | Decentralized | Ethereum, Polygon, Arbitrum, Optimism, Base |
@@ -19,63 +19,63 @@ Multi-Chain Stablecoin-Tracking-Pipeline fuer [Dune Analytics](https://dune.com)
 | LUSD | Liquity | Decentralized | Ethereum |
 | TUSD | TrueUSD | Centralized | Ethereum, BNB |
 
-## Pipeline-Uebersicht
+## Pipeline Overview
 
 ```
 queries/
-├── 00_stablecoin_reference.sql   # Referenztabelle: Adressen, Decimals, Kategorien
-├── 01_stablecoin_transfers.sql   # Basis-Transfers aller Stablecoins (multi-chain)
-├── 02_daily_volume.sql           # Taegliches Volumen mit gleitenden Durchschnitten
-├── 03_net_flows.sql              # Net Flows zu/von CEX, DEX, Bridges
-├── 04_supply_metrics.sql         # Mint/Burn-Tracking und Supply-Entwicklung
-├── 05_bridge_flows.sql           # Cross-Chain Bridge Flow Analyse
-├── 06_whale_tracking.sql         # Whale-Transfer Monitoring (>= 1M)
-└── 07_dashboard_summary.sql      # Dashboard KPIs und Marktanteile
+├── 00_stablecoin_reference.sql   # Reference table: addresses, decimals, categories
+├── 01_stablecoin_transfers.sql   # Base transfers for all stablecoins (multi-chain)
+├── 02_daily_volume.sql           # Daily volume with moving averages
+├── 03_net_flows.sql              # Net flows to/from CEX, DEX, bridges
+├── 04_supply_metrics.sql         # Mint/burn tracking and supply evolution
+├── 05_bridge_flows.sql           # Cross-chain bridge flow analysis
+├── 06_whale_tracking.sql         # Whale transfer monitoring (>= 1M)
+└── 07_dashboard_summary.sql      # Dashboard KPIs and market shares
 ```
 
-## Architektur: Daten-Pipeline Flow
+## Architecture: Data Pipeline Flow
 
-Das folgende Diagramm zeigt, wie die Queries aufeinander aufbauen und welche Dune-Datenquellen genutzt werden:
+The following diagram shows how the queries build on each other and which Dune data sources are used:
 
 ```mermaid
 flowchart TB
-    subgraph Dune_Spells["Dune Datenquellen"]
+    subgraph Dune_Spells["Dune Data Sources"]
         TT["tokens.transfers\n(ERC20 Transfers)"]
         LA["labels.addresses\n(CEX/DEX/Bridge Labels)"]
     end
 
-    subgraph Reference["Konfiguration"]
-        Q00["00 - Stablecoin Reference\nAdressen, Decimals, Kategorien\n(12 Stablecoins x 7 Chains)"]
+    subgraph Reference["Configuration"]
+        Q00["00 - Stablecoin Reference\nAddresses, Decimals, Categories\n(12 Stablecoins x 7 Chains)"]
     end
 
-    subgraph Basis["Basis-Layer"]
-        Q01["01 - Stablecoin Transfers\nAlle ERC20-Transfers\nKlassifizierung: micro → mega_whale\nTyp: mint / burn / transfer"]
+    subgraph Basis["Base Layer"]
+        Q01["01 - Stablecoin Transfers\nAll ERC20 Transfers\nClassification: micro → mega_whale\nType: mint / burn / transfer"]
     end
 
-    subgraph Analyse["Analyse-Layer"]
-        Q02["02 - Daily Volume\nTaegliches Volumen\n7d/30d Moving Averages\nUnique Addresses"]
-        Q03["03 - Net Flows\nCEX / DEX / Bridge Flows\nKumulativer CEX Net Flow\nMarkt-Signal"]
+    subgraph Analyse["Analysis Layer"]
+        Q02["02 - Daily Volume\nDaily Volume\n7d/30d Moving Averages\nUnique Addresses"]
+        Q03["03 - Net Flows\nCEX / DEX / Bridge Flows\nCumulative CEX Net Flow\nMarket Signal"]
         Q04["04 - Supply Metrics\nMint/Burn Tracking\nNet Supply Change\nMint/Burn Ratio"]
-        Q05["05 - Bridge Flows\nCross-Chain Analyse\nIncoming/Outgoing\nNet Bridge Flow"]
-        Q06["06 - Whale Tracking\nTransfers >= 1M USD\nKategorisierung\nSender/Empfaenger Labels"]
+        Q05["05 - Bridge Flows\nCross-Chain Analysis\nIncoming/Outgoing\nNet Bridge Flow"]
+        Q06["06 - Whale Tracking\nTransfers >= 1M USD\nCategorization\nSender/Receiver Labels"]
     end
 
-    subgraph Dashboard["Dashboard-Layer"]
-        Q07["07 - Dashboard Summary\nKPIs pro Stablecoin/Chain\nMarktanteile\nGlobale Metriken"]
+    subgraph Dashboard["Dashboard Layer"]
+        Q07["07 - Dashboard Summary\nKPIs per Stablecoin/Chain\nMarket Shares\nGlobal Metrics"]
     end
 
     Q00 -->|Contract Addresses| Q01
-    TT -->|Transfer-Daten| Q01
-    Q01 -->|Basis-Transfers| Q02
-    Q01 -->|Basis-Transfers| Q03
+    TT -->|Transfer Data| Q01
+    Q01 -->|Base Transfers| Q02
+    Q01 -->|Base Transfers| Q03
     Q01 -->|Mint/Burn Events| Q04
     Q01 -->|Bridge Transfers| Q05
-    Q01 -->|Grosse Transfers| Q06
-    LA -->|Adress-Labels| Q03
-    LA -->|Adress-Labels| Q05
-    LA -->|Adress-Labels| Q06
-    Q02 -->|Volumen-KPIs| Q07
-    Q04 -->|Supply-KPIs| Q07
+    Q01 -->|Large Transfers| Q06
+    LA -->|Address Labels| Q03
+    LA -->|Address Labels| Q05
+    LA -->|Address Labels| Q06
+    Q02 -->|Volume KPIs| Q07
+    Q04 -->|Supply KPIs| Q07
 
     style Dune_Spells fill:#1a1a2e,stroke:#e94560,color:#fff
     style Reference fill:#16213e,stroke:#0f3460,color:#fff
@@ -84,9 +84,9 @@ flowchart TB
     style Dashboard fill:#e94560,stroke:#fff,color:#fff
 ```
 
-## Dashboard-Layout: So sieht es auf Dune aus
+## Dashboard Layout: How It Looks on Dune
 
-Wenn die Queries live auf Dune laufen, wird das Dashboard wie folgt aufgebaut:
+When the queries are live on Dune, the dashboard is structured as follows:
 
 ```mermaid
 block-beta
@@ -118,9 +118,9 @@ block-beta
     end
 
     block:tables:4
-        whale["Table: Whale Alerts (Query 06)\nDatum | Stablecoin | Betrag | Von → Nach | Kategorie"]
+        whale["Table: Whale Alerts (Query 06)\nDate | Stablecoin | Amount | From → To | Category"]
         whale:3
-        share["Pie Chart\nMarktanteile\n(Query 07)"]
+        share["Pie Chart\nMarket Shares\n(Query 07)"]
     end
 
     style header fill:#1a1a2e,stroke:#e94560,color:#fff
@@ -130,9 +130,9 @@ block-beta
     style tables fill:#533483,stroke:#e94560,color:#fff
 ```
 
-## Visualisierungs-Zuordnung
+## Visualization Mapping
 
-Jede Query erzeugt spezifische Visualisierungen auf dem Dune Dashboard:
+Each query produces specific visualizations on the Dune dashboard:
 
 ```mermaid
 flowchart LR
@@ -146,14 +146,14 @@ flowchart LR
     end
 
     subgraph Widgets["Dune Dashboard Widgets"]
-        W1["Line Chart\nVolumen-Trend\nueber Zeit"]
-        W2["Bar Chart\nCEX Net Flow\npro Tag"]
-        W3["Area Chart\nKumulativer\nSupply Change"]
-        W4["Stacked Bar\nBridge In/Out\npro Chain"]
-        W5["Table\nWhale Alerts\nmit Labels"]
+        W1["Line Chart\nVolume Trend\nOver Time"]
+        W2["Bar Chart\nCEX Net Flow\nPer Day"]
+        W3["Area Chart\nCumulative\nSupply Change"]
+        W4["Stacked Bar\nBridge In/Out\nPer Chain"]
+        W5["Table\nWhale Alerts\nWith Labels"]
         W6a["Counter\nGlobal KPIs"]
-        W6b["Pie Chart\nMarktanteile"]
-        W6c["Bar Chart\nVolumen-Ranking"]
+        W6b["Pie Chart\nMarket Shares"]
+        W6c["Bar Chart\nVolume Ranking"]
     end
 
     Q02 --> W1
@@ -169,11 +169,11 @@ flowchart LR
     style Widgets fill:#533483,stroke:#e94560,color:#fff
 ```
 
-## Datenfluss: Von Blockchain zu Dashboard
+## Data Flow: From Blockchain to Dashboard
 
 ```mermaid
 flowchart LR
-    subgraph Blockchain["On-Chain Daten"]
+    subgraph Blockchain["On-Chain Data"]
         ETH["Ethereum"]
         BNB["BNB Chain"]
         POLY["Polygon"]
@@ -190,7 +190,7 @@ flowchart LR
     subgraph Pipeline["Stablecoin Pipeline"]
         REF["Reference\nTable"]
         TRANS["Transfer\nCollection"]
-        AGG["Analyse &\nAggregation"]
+        AGG["Analysis &\nAggregation"]
     end
 
     subgraph Output["Live Dashboard"]
@@ -215,90 +215,90 @@ flowchart LR
     style Output fill:#e94560,stroke:#fff,color:#fff
 ```
 
-## Query-Beschreibungen
+## Query Descriptions
 
 ### 00 - Stablecoin Reference
-Zentrale Konfigurationstabelle mit allen Contract-Adressen, Decimals und Kategorisierungen. Kann als eigenstaendige Query gespeichert und via `query_<id>` referenziert werden.
+Central configuration table with all contract addresses, decimals, and categorizations. Can be saved as a standalone query and referenced via `query_<id>`.
 
 ### 01 - Stablecoin Transfers
-Basis-Query die alle ERC20-Transfers der getrackten Stablecoins sammelt. Nutzt `tokens.transfers` (Dune Spell). Klassifiziert Transfers nach Groesse (micro bis mega_whale) und Typ (mint/burn/transfer).
+Base query that collects all ERC20 transfers of tracked stablecoins. Uses `tokens.transfers` (Dune Spell). Classifies transfers by size (micro to mega_whale) and type (mint/burn/transfer).
 
-**Parameter:** `{{period}}`, `{{min_amount}}`
+**Parameters:** `{{period}}`, `{{min_amount}}`
 
 ### 02 - Daily Volume
-Taegliche Aggregation mit:
-- Transfer-Volumen pro Chain/Stablecoin
-- Transaktionszahlen und eindeutige Adressen
-- 7-Tage und 30-Tage gleitende Durchschnitte
-- Taegliche Veraenderungsrate
+Daily aggregation with:
+- Transfer volume per chain/stablecoin
+- Transaction counts and unique addresses
+- 7-day and 30-day moving averages
+- Daily change rate
 
-**Parameter:** `{{period}}`
+**Parameters:** `{{period}}`
 
 ### 03 - Net Flows
-Analysiert Kapitalfluesse zu/von:
-- **CEX** (Centralized Exchanges) - Sell-Pressure-Indikator
-- **DEX** (Decentralized Exchanges) - DeFi-Aktivitaet
-- **Bridges** - Cross-Chain Kapitalverschiebungen
+Analyzes capital flows to/from:
+- **CEX** (Centralized Exchanges) - Sell pressure indicator
+- **DEX** (Decentralized Exchanges) - DeFi activity
+- **Bridges** - Cross-chain capital movements
 
-Nutzt `labels.addresses` fuer die Adress-Kategorisierung. Kumulativer CEX Net Flow als Markt-Signal.
+Uses `labels.addresses` for address categorization. Cumulative CEX net flow as market signal.
 
-**Parameter:** `{{period}}`
+**Parameters:** `{{period}}`
 
 ### 04 - Supply Metrics
-Trackt Mint- und Burn-Events:
-- Taegliche Mints/Burns und Net Supply Change
-- Kumulativer Supply Change
-- 7-Tage Rolling Mint/Burn-Raten
-- Mint/Burn Ratio (>1 = expansiv, <1 = kontraktiv)
+Tracks mint and burn events:
+- Daily mints/burns and net supply change
+- Cumulative supply change
+- 7-day rolling mint/burn rates
+- Mint/burn ratio (>1 = expansionary, <1 = contractionary)
 
-**Parameter:** `{{period}}`
+**Parameters:** `{{period}}`
 
 ### 05 - Bridge Flows
-Cross-Chain Bridge Analyse:
-- Incoming/Outgoing Volumen pro Chain
-- Net Bridge Flow (positiv = Kapitalzufluss)
-- Kumulativer und 7-Tage Net Bridge Flow
-- Bridge-spezifische Aufschluesselung
+Cross-chain bridge analysis:
+- Incoming/outgoing volume per chain
+- Net bridge flow (positive = capital inflow)
+- Cumulative and 7-day net bridge flow
+- Bridge-specific breakdown
 
-**Parameter:** `{{period}}`
+**Parameters:** `{{period}}`
 
 ### 06 - Whale Tracking
-Grosse Transfers (>= konfigurierbarer Schwellenwert):
-- Kategorisierung: CEX Deposit/Withdrawal, Bridge, DEX, Wallet-to-Wallet
-- Sender/Empfaenger-Labels via `labels.addresses`
-- Taegliches Ranking nach Groesse
+Large transfers (>= configurable threshold):
+- Categorization: CEX deposit/withdrawal, bridge, DEX, wallet-to-wallet
+- Sender/receiver labels via `labels.addresses`
+- Daily ranking by size
 
-**Parameter:** `{{period}}`, `{{whale_threshold}}`
+**Parameters:** `{{period}}`, `{{whale_threshold}}`
 
 ### 07 - Dashboard Summary
-Aggregierte Uebersicht:
-- KPIs pro Stablecoin (Volumen, TXs, Unique Addresses, Active Chains)
-- Marktanteile nach Volumen und Transaktionen
-- Net Supply Change (Mints - Burns)
+Aggregated overview:
+- KPIs per stablecoin (volume, TXs, unique addresses, active chains)
+- Market shares by volume and transactions
+- Net supply change (mints - burns)
 - Rankings
 
-**Parameter:** `{{period}}`
+**Parameters:** `{{period}}`
 
-## Anleitung: Auf Dune live schalten (Step-by-Step)
+## Guide: Going Live on Dune (Step-by-Step)
 
-### Schritt 1: Dune Account erstellen
+### Step 1: Create a Dune Account
 
-1. Gehe zu [dune.com](https://dune.com) und erstelle einen kostenlosen Account
-2. Du brauchst mindestens den **Free Plan** - fuer mehr Query-Ausfuehrungen empfiehlt sich ein Plus/Premium Plan
+1. Go to [dune.com](https://dune.com) and create a free account
+2. You need at least the **Free Plan** - for more query executions, a Plus/Premium plan is recommended
 
-### Schritt 2: Queries anlegen
+### Step 2: Create Queries
 
-Jede SQL-Datei wird als einzelne Query auf Dune angelegt. **Reihenfolge ist wichtig:**
+Each SQL file is created as an individual query on Dune. **Order matters:**
 
 ```mermaid
 flowchart TD
-    S1["1. Neue Query erstellen\ndune.com → New Query"]
-    S2["2. SQL Code einfuegen\nInhalt der .sql Datei kopieren"]
-    S3["3. Query Engine: DuneSQL\nOben links sicherstellen"]
-    S4["4. Run ausfuehren\nBlauer 'Run' Button"]
-    S5["5. Ergebnisse pruefen\nTabelle unten kontrollieren"]
-    S6["6. Query speichern\nNamen vergeben + Save"]
-    S7["7. Query-ID notieren\nURL: dune.com/queries/XXXXXX"]
+    S1["1. Create New Query\ndune.com → New Query"]
+    S2["2. Paste SQL Code\nCopy contents of .sql file"]
+    S3["3. Query Engine: DuneSQL\nEnsure selected in top left"]
+    S4["4. Execute Run\nBlue 'Run' Button"]
+    S5["5. Verify Results\nCheck table below"]
+    S6["6. Save Query\nAssign name + Save"]
+    S7["7. Note Query ID\nURL: dune.com/queries/XXXXXX"]
 
     S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
 
@@ -307,107 +307,107 @@ flowchart TD
     style S7 fill:#533483,stroke:#e94560,color:#fff
 ```
 
-**Reihenfolge der Queries:**
+**Query Order:**
 
-| # | Datei | Dune Query Name (Vorschlag) | Hinweis |
-|---|-------|-----------------------------|---------|
-| 1 | `00_stablecoin_reference.sql` | Stablecoin Reference Table | Zuerst anlegen, Query-ID notieren |
-| 2 | `01_stablecoin_transfers.sql` | Stablecoin Transfers (Multi-Chain) | Basis fuer alle anderen |
-| 3 | `02_daily_volume.sql` | Stablecoin Daily Volume | Volumen-Analyse |
-| 4 | `03_net_flows.sql` | Stablecoin CEX/DEX/Bridge Net Flows | Flow-Analyse |
-| 5 | `04_supply_metrics.sql` | Stablecoin Supply (Mint/Burn) | Supply-Tracking |
-| 6 | `05_bridge_flows.sql` | Stablecoin Bridge Flows | Cross-Chain |
-| 7 | `06_whale_tracking.sql` | Stablecoin Whale Alerts | Whale-Monitor |
-| 8 | `07_dashboard_summary.sql` | Stablecoin Dashboard KPIs | Dashboard-Metriken |
+| # | File | Suggested Dune Query Name | Notes |
+|---|------|---------------------------|-------|
+| 1 | `00_stablecoin_reference.sql` | Stablecoin Reference Table | Create first, note query ID |
+| 2 | `01_stablecoin_transfers.sql` | Stablecoin Transfers (Multi-Chain) | Base for all others |
+| 3 | `02_daily_volume.sql` | Stablecoin Daily Volume | Volume analysis |
+| 4 | `03_net_flows.sql` | Stablecoin CEX/DEX/Bridge Net Flows | Flow analysis |
+| 5 | `04_supply_metrics.sql` | Stablecoin Supply (Mint/Burn) | Supply tracking |
+| 6 | `05_bridge_flows.sql` | Stablecoin Bridge Flows | Cross-chain |
+| 7 | `06_whale_tracking.sql` | Stablecoin Whale Alerts | Whale monitor |
+| 8 | `07_dashboard_summary.sql` | Stablecoin Dashboard KPIs | Dashboard metrics |
 
-### Schritt 3: Parameter konfigurieren
+### Step 3: Configure Parameters
 
-Nach dem Einfuegen des SQL-Codes erkennt Dune automatisch die `{{parameter}}` Platzhalter und zeigt sie als Eingabefelder an:
+After pasting the SQL code, Dune automatically detects `{{parameter}}` placeholders and displays them as input fields:
 
-| Parameter | Typ | Empfohlener Wert | Beschreibung |
-|-----------|-----|-------------------|-------------|
-| `{{period}}` | Text/Dropdown | `7 days` | Zeitraum: `1 day`, `7 days`, `30 days`, `90 days` |
-| `{{min_amount}}` | Number | `100` | Minimaler Transfer-Betrag in USD |
-| `{{whale_threshold}}` | Number | `1000000` | Schwellenwert fuer Whale-Transfers |
+| Parameter | Type | Recommended Value | Description |
+|-----------|------|-------------------|-------------|
+| `{{period}}` | Text/Dropdown | `7 days` | Time range: `1 day`, `7 days`, `30 days`, `90 days` |
+| `{{min_amount}}` | Number | `100` | Minimum transfer amount in USD |
+| `{{whale_threshold}}` | Number | `1000000` | Threshold for whale transfers |
 
-### Schritt 4: Dashboard erstellen
+### Step 4: Create Dashboard
 
 ```mermaid
 flowchart TD
-    D1["1. Neues Dashboard\ndune.com → New Dashboard"]
-    D2["2. Titel setzen\n'Stablecoin Flow Monitor'"]
-    D3["3. Widget hinzufuegen\n'Add visualization'"]
-    D4["4. Query auswaehlen\nGespeicherte Query suchen"]
-    D5["5. Visualisierungs-Typ\nChart/Table/Counter waehlen"]
-    D6["6. Widget konfigurieren\nAchsen, Farben, Filter"]
-    D7["7. Layout anpassen\nWidgets per Drag & Drop"]
-    D8["8. Dashboard speichern\nSave → Publish"]
+    D1["1. New Dashboard\ndune.com → New Dashboard"]
+    D2["2. Set Title\n'Stablecoin Flow Monitor'"]
+    D3["3. Add Widget\n'Add visualization'"]
+    D4["4. Select Query\nSearch for saved query"]
+    D5["5. Visualization Type\nChoose Chart/Table/Counter"]
+    D6["6. Configure Widget\nAxes, colors, filters"]
+    D7["7. Adjust Layout\nDrag & drop widgets"]
+    D8["8. Save Dashboard\nSave → Publish"]
 
     D1 --> D2 --> D3 --> D4 --> D5 --> D6 --> D7 --> D8
-    D7 -->|Weitere Widgets| D3
+    D7 -->|More widgets| D3
 
     style D1 fill:#1a1a2e,stroke:#e94560,color:#fff
     style D5 fill:#533483,stroke:#e94560,color:#fff
     style D8 fill:#e94560,stroke:#fff,color:#fff
 ```
 
-### Schritt 5: Visualisierungen konfigurieren
+### Step 5: Configure Visualizations
 
-Fuer jede Query die passende Visualisierung einrichten:
+Set up the appropriate visualization for each query:
 
-**Query 07 → Counter Widgets (KPIs oben im Dashboard)**
-- Widget-Typ: **Counter**
-- 4 separate Counter erstellen: Total Volume, Transactions, Unique Addresses, Net Supply Change
-- Ergebnis filtern auf `metric_type = 'global'`
+**Query 07 → Counter Widgets (KPIs at top of dashboard)**
+- Widget type: **Counter**
+- Create 4 separate counters: Total Volume, Transactions, Unique Addresses, Net Supply Change
+- Filter results on `metric_type = 'global'`
 
-**Query 02 → Line Chart (Volumen-Trend)**
-- Widget-Typ: **Line Chart**
-- X-Achse: `day`
-- Y-Achse: `daily_volume`
-- Group by: `symbol` oder `blockchain`
-- Zusaetzlich: `ma_7d` und `ma_30d` als gestrichelte Linien
+**Query 02 → Line Chart (Volume Trend)**
+- Widget type: **Line Chart**
+- X-axis: `day`
+- Y-axis: `daily_volume`
+- Group by: `symbol` or `blockchain`
+- Additionally: `ma_7d` and `ma_30d` as dashed lines
 
 **Query 03 → Bar Chart (CEX Net Flows)**
-- Widget-Typ: **Bar Chart**
-- X-Achse: `day`
-- Y-Achse: `net_cex_flow`
-- Farbe: Gruen (positiv/Outflow) / Rot (negativ/Inflow)
-- Interpretation: Negative Werte = Sell Pressure
+- Widget type: **Bar Chart**
+- X-axis: `day`
+- Y-axis: `net_cex_flow`
+- Color: Green (positive/outflow) / Red (negative/inflow)
+- Interpretation: Negative values = sell pressure
 
 **Query 04 → Area Chart (Supply)**
-- Widget-Typ: **Area Chart**
-- X-Achse: `day`
-- Y-Achse: `cumulative_supply_change`
+- Widget type: **Area Chart**
+- X-axis: `day`
+- Y-axis: `cumulative_supply_change`
 - Group by: `symbol`
 
 **Query 05 → Stacked Bar Chart (Bridge Flows)**
-- Widget-Typ: **Stacked Bar Chart**
-- X-Achse: `blockchain`
-- Y-Achse: `net_bridge_flow`
-- Zeigt Kapitalfluss zwischen Chains
+- Widget type: **Stacked Bar Chart**
+- X-axis: `blockchain`
+- Y-axis: `net_bridge_flow`
+- Shows capital flow between chains
 
 **Query 06 → Table (Whale Alerts)**
-- Widget-Typ: **Table**
-- Spalten: block_time, symbol, amount_usd, sender_label, receiver_label, transfer_category
-- Sortierung: amount_usd DESC
+- Widget type: **Table**
+- Columns: block_time, symbol, amount_usd, sender_label, receiver_label, transfer_category
+- Sort: amount_usd DESC
 
-**Query 07 → Pie Chart (Marktanteile)**
-- Widget-Typ: **Pie Chart**
-- Werte: `volume_market_share_pct`
+**Query 07 → Pie Chart (Market Shares)**
+- Widget type: **Pie Chart**
+- Values: `volume_market_share_pct`
 - Labels: `symbol`
-- Ergebnis filtern auf `metric_type = 'per_stablecoin'`
+- Filter results on `metric_type = 'per_stablecoin'`
 
-### Schritt 6: Dashboard veroeffentlichen
+### Step 6: Publish Dashboard
 
-1. **Save** - Dashboard speichern
-2. **Publish** - Oeffentlich zugaenglich machen (optional)
-3. **Share** - Link teilen oder in Webseiten einbetten
-4. **Schedule** (Premium) - Automatische Refresh-Intervalle festlegen
+1. **Save** - Save draft
+2. **Publish** - Make publicly accessible (optional)
+3. **Share** - Share link or embed in websites
+4. **Schedule** (Premium) - Set automatic refresh intervals
 
 ```mermaid
 flowchart LR
-    SAVE["Save\nEntwurf speichern"]
-    PUB["Publish\nOeffentlich machen"]
+    SAVE["Save\nSave Draft"]
+    PUB["Publish\nMake Public"]
     SHARE["Share\nLink / Embed"]
     SCHED["Schedule\nAuto-Refresh"]
 
@@ -420,23 +420,23 @@ flowchart LR
     style SCHED fill:#e94560,stroke:#fff,color:#fff
 ```
 
-### Tipps fuer den Live-Betrieb
+### Tips for Live Operation
 
-- **Query Refresh:** Dune cached Ergebnisse. Klicke auf "Run" um aktuelle Daten zu laden
-- **Scheduled Refreshes:** Mit Premium-Plan koennen Queries automatisch alle X Stunden/Tage aktualisiert werden
-- **Materialized Views:** Fuer Query 00 (Reference Table) kann man `Materialized View` aktivieren - spart Rechenzeit
-- **Forking:** Andere Nutzer koennen dein Dashboard forken und anpassen
-- **API Access:** Query-Ergebnisse koennen ueber die Dune API (v3) als JSON abgerufen werden fuer externe Dashboards
+- **Query Refresh:** Dune caches results. Click "Run" to load current data
+- **Scheduled Refreshes:** With a Premium plan, queries can be automatically refreshed every X hours/days
+- **Materialized Views:** For Query 00 (Reference Table), you can enable `Materialized View` - saves compute time
+- **Forking:** Other users can fork your dashboard and customize it
+- **API Access:** Query results can be retrieved via the Dune API (v3) as JSON for external dashboards
 
-## Dune-spezifische Tabellen
+## Dune-Specific Tables
 
-Die Pipeline nutzt folgende Dune Spells/Tabellen:
+The pipeline uses the following Dune Spells/tables:
 
-| Tabelle | Beschreibung |
-|---------|-------------|
-| `tokens.transfers` | Vereinheitlichte ERC20-Transfers ueber alle Chains |
-| `labels.addresses` | Community-gepflegte Adress-Labels (CEX, DEX, Bridge, etc.) |
-| `prices.usd` | Token-Preise (optional, nicht direkt genutzt da Stablecoins ~$1) |
+| Table | Description |
+|-------|-------------|
+| `tokens.transfers` | Unified ERC20 transfers across all chains |
+| `labels.addresses` | Community-maintained address labels (CEX, DEX, bridge, etc.) |
+| `prices.usd` | Token prices (optional, not directly used since stablecoins ~$1) |
 
 ## Chains
 
