@@ -1,129 +1,199 @@
 # Dune Analytics: Stablecoin Flow Pipeline
 
-Multi-Chain Stablecoin-Tracking-Pipeline fuer [Dune Analytics](https://dune.com). Trackt Transfers, Volumen, Supply, Bridge-Flows und Whale-Aktivitaet der wichtigsten Stablecoins ueber 7+ EVM-Chains.
+Multi-Chain Stablecoin-Tracking-Pipeline fuer [Dune Analytics](https://dune.com). Trackt Transfers, Volumen, Supply, Bridge-Flows und Whale-Aktivitaet der wichtigsten Stablecoins ueber 15+ Chains (EVM + Solana).
 
-## Unterstuetzte Stablecoins
+## Unterstuetzte Stablecoins (17 Coins)
 
 | Symbol | Issuer | Typ | Chains |
 |--------|--------|-----|--------|
-| USDT | Tether | Centralized | Ethereum, BNB, Polygon, Arbitrum, Optimism, Avalanche, Base |
-| USDC | Circle | Centralized | Ethereum, BNB, Polygon, Arbitrum, Optimism, Avalanche, Base |
-| DAI | MakerDAO | Decentralized | Ethereum, Polygon, Arbitrum, Optimism, Base |
-| USDS | Sky | Decentralized | Ethereum |
-| FRAX | Frax Finance | Hybrid | Ethereum, Arbitrum, Optimism |
+| USDT | Tether | Centralized | Ethereum, BNB, Polygon, Arbitrum, Optimism, Avalanche, Base, Gnosis, Fantom, Celo, **Solana** |
+| USDC | Circle | Centralized | Ethereum, BNB, Polygon, Arbitrum, Optimism, Avalanche, Base, Gnosis, Celo, Fantom, zkSync, Linea, **Solana** |
+| DAI | MakerDAO | Decentralized | Ethereum, Polygon, Arbitrum, Optimism, Base, Gnosis, **Solana** |
+| USDS | Sky | Decentralized | Ethereum, **Solana** |
+| FRAX | Frax Finance | Hybrid | Ethereum, Arbitrum, Optimism, Polygon |
 | GHO | Aave | Decentralized | Ethereum |
 | crvUSD | Curve | Decentralized | Ethereum |
-| PYUSD | PayPal | Centralized | Ethereum |
+| PYUSD | PayPal | Centralized | Ethereum, **Solana** |
 | USDe | Ethena | Hybrid | Ethereum |
 | FDUSD | First Digital | Centralized | Ethereum, BNB |
 | LUSD | Liquity | Decentralized | Ethereum |
 | TUSD | TrueUSD | Centralized | Ethereum, BNB |
+| BUSD | Paxos | Centralized | Ethereum, BNB |
+| USDP | Paxos | Centralized | Ethereum |
+| sUSD | Synthetix | Decentralized | Optimism |
+| DOLA | Inverse Finance | Decentralized | Ethereum |
+| EURS / EURT / EURA | Stasis / Tether / Angle | Various | Ethereum |
+| USDC.e / USDbC | Circle (bridged) | Centralized | Arbitrum, Optimism, Polygon, Base |
 
-## Pipeline-Uebersicht
+## Unterstuetzte Chains (15)
+
+### EVM Chains
+| Chain | Chain-ID (Dune) | Typ |
+|-------|----------------|-----|
+| Ethereum | `ethereum` | L1 |
+| BNB Chain | `bnb` | L1 |
+| Polygon | `polygon` | L2 (Sidechain) |
+| Arbitrum | `arbitrum` | L2 (Optimistic) |
+| Optimism | `optimism` | L2 (Optimistic) |
+| Avalanche C-Chain | `avalanche_c` | L1 |
+| Base | `base` | L2 (Optimistic) |
+| Gnosis | `gnosis` | L1 (Sidechain) |
+| Fantom | `fantom` | L1 |
+| Celo | `celo` | L1 |
+| zkSync Era | `zksync` | L2 (ZK-Rollup) |
+| Linea | `linea` | L2 (ZK-Rollup) |
+
+### Non-EVM Chains
+| Chain | Dune-Tabellen | Typ |
+|-------|--------------|-----|
+| **Solana** | `tokens_solana.transfers` | L1 (SVM) |
+
+## Unterstuetzte Bridge-Protokolle (13)
+
+| Bridge | Typ | Chains |
+|--------|-----|--------|
+| Stargate (LayerZero) | Liquidity Pool | Ethereum, Arbitrum, Optimism, Polygon, Avalanche, Base, BNB |
+| Across Protocol | Intent-based | Ethereum, Arbitrum, Optimism, Polygon, Base |
+| Hop Protocol | AMM Bridge | Ethereum, Arbitrum, Optimism, Polygon |
+| Wormhole (Portal) | Lock & Mint | Multi-chain |
+| Synapse Protocol | AMM Bridge | Ethereum, Arbitrum, Optimism, Polygon, Avalanche, BNB, Base, Fantom |
+| Celer cBridge | Liquidity Pool | Ethereum, Arbitrum, Optimism, Polygon, BNB, Avalanche |
+| Orbiter Finance | Maker System | Ethereum, L2s |
+| Optimism Bridge | Canonical | Ethereum <-> Optimism |
+| Arbitrum Bridge | Canonical | Ethereum <-> Arbitrum |
+| Polygon Bridge | Canonical | Ethereum <-> Polygon |
+| Base Bridge | Canonical | Ethereum <-> Base |
+| zkSync Bridge | Canonical | Ethereum <-> zkSync |
+| Linea Bridge | Canonical | Ethereum <-> Linea |
+
+## Pipeline-Struktur
 
 ```
 queries/
-├── 00_stablecoin_reference.sql   # Referenztabelle: Adressen, Decimals, Kategorien
-├── 01_stablecoin_transfers.sql   # Basis-Transfers aller Stablecoins (multi-chain)
-├── 02_daily_volume.sql           # Taegliches Volumen mit gleitenden Durchschnitten
-├── 03_net_flows.sql              # Net Flows zu/von CEX, DEX, Bridges
-├── 04_supply_metrics.sql         # Mint/Burn-Tracking und Supply-Entwicklung
-├── 05_bridge_flows.sql           # Cross-Chain Bridge Flow Analyse
-├── 06_whale_tracking.sql         # Whale-Transfer Monitoring (>= 1M)
-└── 07_dashboard_summary.sql      # Dashboard KPIs und Marktanteile
+├── 00_stablecoin_reference.sql       # Referenztabelle: 50+ Adressen, alle Chains
+├── 01_stablecoin_transfers.sql       # Basis-Transfers (EVM, multi-chain)
+├── 02_daily_volume.sql               # Taegliches Volumen + gleitende Durchschnitte
+├── 03_net_flows.sql                  # CEX/DEX/Bridge Net Flows
+├── 04_supply_metrics.sql             # Mint/Burn-Tracking, Supply-Entwicklung
+├── 05_bridge_flows.sql               # Cross-Chain Bridge Flows (13 Bridges)
+├── 06_whale_tracking.sql             # Whale-Transfer Monitoring
+├── 07_dashboard_summary.sql          # Dashboard KPIs und Marktanteile
+├── 08_solana_stablecoins.sql         # Solana SPL Token Transfers (non-EVM)
+│
+└── visualizations/                   # Dashboard-optimierte Queries
+    ├── v1_counter_kpis.sql           # Counter-Widgets (Headline KPIs)
+    ├── v2_market_share_pie.sql       # Pie Chart: Marktanteile
+    ├── v3_volume_over_time.sql       # Stacked Area: Volumen ueber Zeit
+    ├── v4_chain_heatmap.sql          # Heatmap: Chain x Stablecoin Matrix
+    ├── v5_top_flows_table.sql        # Tabelle: Groesste Transfers
+    └── v6_bridge_sankey.sql          # Bar Chart: Bridge-Protokoll Flows
 ```
 
-## Query-Beschreibungen
+## Dashboard Setup-Anleitung
 
-### 00 - Stablecoin Reference
-Zentrale Konfigurationstabelle mit allen Contract-Adressen, Decimals und Kategorisierungen. Kann als eigenstaendige Query gespeichert und via `query_<id>` referenziert werden.
+### Schritt 1: Queries auf Dune erstellen
 
-### 01 - Stablecoin Transfers
-Basis-Query die alle ERC20-Transfers der getrackten Stablecoins sammelt. Nutzt `tokens.transfers` (Dune Spell). Klassifiziert Transfers nach Groesse (micro bis mega_whale) und Typ (mint/burn/transfer).
+1. Gehe zu [dune.com](https://dune.com) und logge dich ein
+2. Klicke "New Query" fuer jede `.sql` Datei
+3. Kopiere den SQL-Code und speichere die Query
+4. Die `{{parameter}}` Platzhalter werden automatisch als Dropdown/Input im UI
 
-**Parameter:** `{{period}}`, `{{min_amount}}`
+### Schritt 2: Dashboard erstellen
 
-### 02 - Daily Volume
-Taegliche Aggregation mit:
-- Transfer-Volumen pro Chain/Stablecoin
-- Transaktionszahlen und eindeutige Adressen
-- 7-Tage und 30-Tage gleitende Durchschnitte
-- Taegliche Veraenderungsrate
+1. Klicke "New Dashboard"
+2. Fuge Widgets hinzu ("Add Widget" -> "Query Result")
 
-**Parameter:** `{{period}}`
+### Empfohlenes Dashboard-Layout
 
-### 03 - Net Flows
-Analysiert Kapitalfluesse zu/von:
-- **CEX** (Centralized Exchanges) - Sell-Pressure-Indikator
-- **DEX** (Decentralized Exchanges) - DeFi-Aktivitaet
-- **Bridges** - Cross-Chain Kapitalverschiebungen
+```
++------------------------------------------------------------------+
+| ROW 1: Counter KPIs (v1_counter_kpis.sql)                        |
+| [Total Volume] [Total TXs] [Active Chains] [Net Supply Change]   |
++------------------------------------------------------------------+
+| ROW 2: Charts                                                     |
+| +-----------------------------+ +------------------------------+ |
+| | Stacked Area Chart          | | Pie Chart                    | |
+| | v3_volume_over_time.sql     | | v2_market_share_pie.sql      | |
+| | X=day, Y=daily_volume       | | X=symbol                     | |
+| | Group=symbol, Stacked Area  | | Y=volume_share_pct           | |
+| +-----------------------------+ +------------------------------+ |
++------------------------------------------------------------------+
+| ROW 3: Bridge & Chain Analysis                                    |
+| +-----------------------------+ +------------------------------+ |
+| | Bar Chart (Bridges)         | | Heatmap Table                | |
+| | v6_bridge_sankey.sql        | | v4_chain_heatmap.sql         | |
+| | Filter: bridge_ranking     | | Chain x Stablecoin Matrix    | |
+| | X=label, Y=total_volume    | | Bedingte Formatierung an     | |
+| +-----------------------------+ +------------------------------+ |
++------------------------------------------------------------------+
+| ROW 4: CEX Net Flows                                              |
+| +--------------------------------------------------------------+ |
+| | Bar Chart (pos/neg)                                           | |
+| | 03_net_flows.sql                                              | |
+| | X=day, Y=cex_net_flow, Group=symbol                          | |
+| +--------------------------------------------------------------+ |
++------------------------------------------------------------------+
+| ROW 5: Supply & Mint/Burn                                         |
+| +--------------------------------------------------------------+ |
+| | Area Chart                                                    | |
+| | 04_supply_metrics.sql                                         | |
+| | X=day, Y=cumulative_net_supply_change, Group=symbol           | |
+| +--------------------------------------------------------------+ |
++------------------------------------------------------------------+
+| ROW 6: Whale Alerts & Top Flows                                   |
+| +--------------------------------------------------------------+ |
+| | Table                                                         | |
+| | v5_top_flows_table.sql                                        | |
+| | Sortiert nach Amount DESC, bedingte Formatierung nach Size    | |
+| +--------------------------------------------------------------+ |
++------------------------------------------------------------------+
+```
 
-Nutzt `labels.addresses` fuer die Adress-Kategorisierung. Kumulativer CEX Net Flow als Markt-Signal.
+### Schritt 3: Widget-Konfiguration
 
-**Parameter:** `{{period}}`
+| Widget | Query | Chart-Typ | X-Achse | Y-Achse | Group By |
+|--------|-------|-----------|---------|---------|----------|
+| Headline KPIs | v1_counter_kpis | Counter | - | Spalte waehlen | - |
+| Volume Timeline | v3_volume_over_time | Stacked Area | day | daily_volume | group_label |
+| Market Share | v2_market_share_pie | Pie | symbol | volume_share_pct | - |
+| Chain Heatmap | v4_chain_heatmap | Table | - | - | - |
+| Bridge Ranking | v6_bridge_sankey | Bar (horizontal) | label | total_volume | - |
+| CEX Net Flows | 03_net_flows | Bar (+/-) | day | cex_net_flow | symbol |
+| Supply Tracker | 04_supply_metrics | Area | day | cumulative_net_supply_change | symbol |
+| Top Flows | v5_top_flows_table | Table | - | - | - |
+| Whale Alerts | 06_whale_tracking | Table | - | - | - |
+| Bridge Detail | 05_bridge_flows | Line | day | net_flow | bridge_protocol |
+| Solana Volume | 08_solana_stablecoins | Bar | day | daily_volume | symbol |
 
-### 04 - Supply Metrics
-Trackt Mint- und Burn-Events:
-- Taegliche Mints/Burns und Net Supply Change
-- Kumulativer Supply Change
-- 7-Tage Rolling Mint/Burn-Raten
-- Mint/Burn Ratio (>1 = expansiv, <1 = kontraktiv)
+### Schritt 4: Live schalten
 
-**Parameter:** `{{period}}`
+1. Oeffne dein Dashboard
+2. Klicke rechts oben auf **"Share"**
+3. Waehle **"Public"** - jetzt kann jeder mit dem Link das Dashboard sehen
+4. Optional: Setze einen **Refresh Schedule** (z.B. alle 6 Stunden)
+5. Dein Dashboard ist jetzt live und aktualisiert sich automatisch
 
-### 05 - Bridge Flows
-Cross-Chain Bridge Analyse:
-- Incoming/Outgoing Volumen pro Chain
-- Net Bridge Flow (positiv = Kapitalzufluss)
-- Kumulativer und 7-Tage Net Bridge Flow
-- Bridge-spezifische Aufschluesselung
+### Parameter-Empfehlungen
 
-**Parameter:** `{{period}}`
+| Parameter | Standard | Optionen | Beschreibung |
+|-----------|----------|----------|-------------|
+| `{{period}}` | `30 days` | 7 days, 30 days, 90 days, 365 days | Zeitfenster |
+| `{{min_amount}}` | `0` | 0, 1000, 10000, 100000, 1000000 | Mindestbetrag Filter |
+| `{{whale_threshold}}` | `1000000` | 500000, 1000000, 5000000, 10000000 | Whale-Schwellenwert |
 
-### 06 - Whale Tracking
-Grosse Transfers (>= konfigurierbarer Schwellenwert):
-- Kategorisierung: CEX Deposit/Withdrawal, Bridge, DEX, Wallet-to-Wallet
-- Sender/Empfaenger-Labels via `labels.addresses`
-- Taegliches Ranking nach Groesse
+## Dune-Tabellen Referenz
 
-**Parameter:** `{{period}}`, `{{whale_threshold}}`
+| Tabelle | Chain | Beschreibung |
+|---------|-------|-------------|
+| `tokens.transfers` | Alle EVM | Vereinheitlichte ERC20-Transfers |
+| `tokens_solana.transfers` | Solana | SPL Token Transfers |
+| `labels.addresses` | Alle | Community-Labels (CEX, DEX, Bridge, DeFi) |
+| `prices.usd` | Alle | Token-Preise (optional fuer Stablecoins) |
 
-### 07 - Dashboard Summary
-Aggregierte Uebersicht:
-- KPIs pro Stablecoin (Volumen, TXs, Unique Addresses, Active Chains)
-- Marktanteile nach Volumen und Transaktionen
-- Net Supply Change (Mints - Burns)
-- Rankings
+## Technische Hinweise
 
-**Parameter:** `{{period}}`
-
-## Verwendung auf Dune
-
-1. **Query erstellen:** Jede `.sql`-Datei als neue Query auf [dune.com](https://dune.com) anlegen
-2. **Parameter setzen:** Die `{{parameter}}` Platzhalter werden automatisch als UI-Inputs in Dune dargestellt
-3. **Dashboard bauen:** Queries zu einem Dashboard zusammenfuegen mit:
-   - Counter-Widgets fuer globale KPIs (Query 07)
-   - Line Charts fuer taegliches Volumen (Query 02)
-   - Bar Charts fuer CEX Net Flows (Query 03)
-   - Area Charts fuer Supply (Query 04)
-   - Tables fuer Whale Alerts (Query 06)
-
-## Dune-spezifische Tabellen
-
-Die Pipeline nutzt folgende Dune Spells/Tabellen:
-
-| Tabelle | Beschreibung |
-|---------|-------------|
-| `tokens.transfers` | Vereinheitlichte ERC20-Transfers ueber alle Chains |
-| `labels.addresses` | Community-gepflegte Adress-Labels (CEX, DEX, Bridge, etc.) |
-| `prices.usd` | Token-Preise (optional, nicht direkt genutzt da Stablecoins ~$1) |
-
-## Chains
-
-- Ethereum
-- BNB Chain (bnb)
-- Polygon
-- Arbitrum
-- Optimism
-- Avalanche C-Chain (avalanche_c)
-- Base
+- **DuneSQL (Trino)**: Alle Queries nutzen DuneSQL-Syntax
+- **Adressen**: EVM-Adressen als `0x...` Hex, Solana als Base58 Strings
+- **Decimals**: Werden pro Token/Chain korrekt beruecksichtigt (6/8/18)
+- **Labels**: `labels.addresses` wird von der Dune Community gepflegt
+- **Performance**: Fuer grosse Zeitraeume (>90 Tage) kann die Ausfuehrung laenger dauern
