@@ -1,15 +1,17 @@
 -- ============================================================================
--- Dune Analytics: Extended Stablecoin Reference (EVM + Non-EVM)
+-- Dune Analytics: Extended Stablecoin Reference (21 Chains)
 -- ============================================================================
--- Erweiterte Referenztabelle mit 15+ Chains inkl. Solana (non-EVM).
--- Deckt alle relevanten Stablecoins auf allen von Dune unterstuetzten
--- Chains ab.
+-- Erweiterte Referenztabelle mit 21 Chains:
+--   12 Core EVM + 3 neue L2s + Solana + Tron (non-EVM)
+--
+-- Neue Chains in dieser Version:
+--   Scroll, Mantle, Blast, Mode, Polygon zkEVM, Tron
 -- ============================================================================
 
 WITH stablecoin_reference AS (
     SELECT * FROM (VALUES
         -- =================================================================
-        -- USDT (Tether) - 10 Chains
+        -- USDT (Tether) - 15 EVM Chains
         -- =================================================================
         ('USDT', 'Tether',          'ethereum',     0xdac17f958d2ee523a2206206994597c13d831ec7, 6,  'centralized', 'evm'),
         ('USDT', 'Tether',          'bnb',          0x55d398326f99059ff775485246999027b3197955, 18, 'centralized', 'evm'),
@@ -21,9 +23,13 @@ WITH stablecoin_reference AS (
         ('USDT', 'Tether',          'gnosis',       0x4ecaba5870353805a9f068101a40e0f32ed605c6, 6,  'centralized', 'evm'),
         ('USDT', 'Tether',          'fantom',       0x049d68029688eabf473097a2fc38ef61633a3c7a, 6,  'centralized', 'evm'),
         ('USDT', 'Tether',          'celo',         0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e, 6,  'centralized', 'evm'),
+        ('USDT', 'Tether',          'scroll',       0xf55bec9cafdbe8730f096aa55dad6d22d44099df, 6,  'centralized', 'evm'),
+        ('USDT', 'Tether',          'mantle',       0x201eba5cc46d216ce6dc03f6a759e8e766e956ae, 6,  'centralized', 'evm'),
+        ('USDT', 'Tether',          'mode',         0xf0f161fda2712db8b566946122a5af183995e2ed, 18, 'centralized', 'evm'),
+        ('USDT', 'Tether',          'zkevm',        0x1e4a5963abfd975d8c9021ce480b42188849d41d, 6,  'centralized', 'evm'),
 
         -- =================================================================
-        -- USDC (Circle) - 12 Chains
+        -- USDC (Circle) - 17 EVM Chains
         -- =================================================================
         ('USDC', 'Circle',          'ethereum',     0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48, 6,  'centralized', 'evm'),
         ('USDC', 'Circle',          'bnb',          0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d, 18, 'centralized', 'evm'),
@@ -37,9 +43,14 @@ WITH stablecoin_reference AS (
         ('USDC', 'Circle',          'fantom',       0x04068da6c83afcfa0e13ba15a6696662335d5b75, 6,  'centralized', 'evm'),
         ('USDC', 'Circle',          'zksync',       0x1d17cbcf0d6d143135ae902365d2e5e2a16538d4, 6,  'centralized', 'evm'),
         ('USDC', 'Circle',          'linea',        0x176211869ca2b568f2a7d4ee941e073a821ee1ff, 6,  'centralized', 'evm'),
+        ('USDC', 'Circle',          'scroll',       0x06efdbff2a14a7c8e15944d1f4a48f9f95f663a4, 6,  'centralized', 'evm'),
+        ('USDC', 'Circle',          'mantle',       0x09bc4e0d10e52d8da8127c33f8e2be0ee0064622, 6,  'centralized', 'evm'),
+        ('USDC', 'Circle',          'mode',         0xd988097fb8612cc24eec14542bc03424c656005f, 6,  'centralized', 'evm'),
+        ('USDC', 'Circle',          'zkevm',        0xa8ce8aee21bc2a48a5ef670afcc9274c7bbbc035, 6,  'centralized', 'evm'),
+        ('USDC', 'Circle',          'blast',        0x4300000000000000000000000000000000000004, 18, 'centralized', 'evm'),
 
         -- =================================================================
-        -- DAI / USDS (MakerDAO / Sky) - 6 Chains
+        -- DAI / USDS (MakerDAO / Sky) - 7 Chains
         -- =================================================================
         ('DAI',  'MakerDAO',        'ethereum',     0x6b175474e89094c44da98b954eedeac495271d0f, 18, 'decentralized', 'evm'),
         ('DAI',  'MakerDAO',        'polygon',      0x8f3cf7ad23cd3cadbd9735aff958023239c6a063, 18, 'decentralized', 'evm'),
@@ -47,6 +58,7 @@ WITH stablecoin_reference AS (
         ('DAI',  'MakerDAO',        'optimism',     0xda10009cbd5d07dd0cecc66161fc93d7c9000da1, 18, 'decentralized', 'evm'),
         ('DAI',  'MakerDAO',        'base',         0x50c5725949a6f0c72e6c4a641f24049a917db0cb, 18, 'decentralized', 'evm'),
         ('DAI',  'MakerDAO',        'gnosis',       0x44fa8e6f47987339850636f88629646662444217, 18, 'decentralized', 'evm'),
+        ('DAI',  'MakerDAO',        'zkevm',        0xc5015b9d9161dca7e18e32f6f25c4ad850731fd4, 18, 'decentralized', 'evm'),
         ('USDS', 'Sky',             'ethereum',     0xdc035d45d973e3ec169d2276ddab16f1e407384f, 18, 'decentralized', 'evm'),
 
         -- =================================================================
@@ -68,7 +80,7 @@ WITH stablecoin_reference AS (
         ('crvUSD','Curve',          'ethereum',     0xf939e0a03fb07f59a73314e73794be0e57ac1b4e, 18, 'decentralized', 'evm'),
 
         -- =================================================================
-        -- PYUSD (PayPal) - 2 Chains
+        -- PYUSD (PayPal)
         -- =================================================================
         ('PYUSD','PayPal',          'ethereum',     0x6c3ea9036406852006290770bedfcaba0e23a0e8, 6,  'centralized', 'evm'),
 
@@ -90,12 +102,13 @@ WITH stablecoin_reference AS (
         ('FDUSD','First Digital',   'bnb',         0xc5f0f7b66764f6ec8c8dff7ba683102295e16409, 18, 'centralized', 'evm'),
 
         -- =================================================================
-        -- USDe (Ethena)
+        -- USDe (Ethena) - 2 Chains
         -- =================================================================
         ('USDe', 'Ethena',          'ethereum',    0x4c9edd5852cd905f086c759e8383e09bff1e68b3, 18, 'hybrid', 'evm'),
+        ('USDe', 'Ethena',          'blast',       0x4fee793d435c6944b88e45ed9160f5153495bbf3, 18, 'hybrid', 'evm'),
 
         -- =================================================================
-        -- BUSD (Binance USD) - Legacy aber noch aktiv
+        -- BUSD (Paxos) - Legacy
         -- =================================================================
         ('BUSD', 'Paxos',          'ethereum',     0x4fabb145d64652a948d72533023f6e7a623c7c53, 18, 'centralized', 'evm'),
         ('BUSD', 'Paxos',          'bnb',          0xe9e7cea3dedca5984780bafc599bd69add087d56, 18, 'centralized', 'evm'),
@@ -116,39 +129,31 @@ WITH stablecoin_reference AS (
         ('DOLA', 'Inverse Finance', 'ethereum',    0x865377367054516e17014ccded1e7d814edc9ce4, 18, 'decentralized', 'evm'),
 
         -- =================================================================
-        -- EURS (Stasis Euro)
+        -- Euro-Stablecoins
         -- =================================================================
         ('EURS', 'Stasis',          'ethereum',    0xdb25f211ab05b1c97d595516f45794528a807ad8, 2,  'centralized', 'evm'),
-
-        -- =================================================================
-        -- EURT (Tether Euro)
-        -- =================================================================
         ('EURT', 'Tether',          'ethereum',    0xc581b735a1688071a1746c968e0798d642ede491, 6,  'centralized', 'evm'),
-
-        -- =================================================================
-        -- agEUR / EURA (Angle Protocol)
-        -- =================================================================
         ('EURA', 'Angle',           'ethereum',    0x1a7e4e63778b4f12a199c062f3efdd288afcbce8, 18, 'decentralized', 'evm'),
 
         -- =================================================================
-        -- USDbC (Bridged USDC on Base - legacy)
+        -- Bridged USDC Varianten (Legacy)
         -- =================================================================
         ('USDbC','Circle (bridged)','base',        0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca, 6,  'centralized', 'evm'),
-
-        -- =================================================================
-        -- USDC.e (Bridged USDC on Arbitrum - legacy)
-        -- =================================================================
         ('USDC.e','Circle (bridged)','arbitrum',   0xff970a61a04b1ca14834a43f5de4533ebddb5cc8, 6,  'centralized', 'evm'),
-
-        -- =================================================================
-        -- USDC.e (Bridged USDC on Optimism - legacy)
-        -- =================================================================
         ('USDC.e','Circle (bridged)','optimism',   0x7f5c764cbc14f9669b88837ca1490cca17c31607, 6,  'centralized', 'evm'),
+        ('USDC.e','Circle (bridged)','polygon',    0x2791bca1f2de4661ed88a30c99a7a9449aa84174, 6,  'centralized', 'evm'),
+        ('USDC.e','Circle (bridged)','avalanche_c',0xa7d7079b0fead91f3e65f86e8915cb59c1a4c664, 6,  'centralized', 'evm'),
 
         -- =================================================================
-        -- USDC.e (Bridged USDC on Polygon)
+        -- USDB (Blast native stablecoin)
         -- =================================================================
-        ('USDC.e','Circle (bridged)','polygon',    0x2791bca1f2de4661ed88a30c99a7a9449aa84174, 6,  'centralized', 'evm')
+        ('USDB', 'Blast',           'blast',       0x4300000000000000000000000000000000000003, 18, 'decentralized', 'evm'),
+
+        -- =================================================================
+        -- METH/cmETH stablecoins on Mantle (USDY)
+        -- =================================================================
+        ('USDY', 'Ondo Finance',    'ethereum',    0x96f6ef951840721adbf46ac996b59e0235cb985c, 18, 'centralized', 'evm'),
+        ('USDY', 'Ondo Finance',    'mantle',      0x5be26527e817998a7206475496fde1e68957c5a6, 18, 'centralized', 'evm')
 
     ) AS t(symbol, issuer, blockchain, contract_address, decimals, category, chain_type)
 )

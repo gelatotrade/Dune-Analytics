@@ -1,17 +1,10 @@
 -- ============================================================================
--- Dune Analytics: Enhanced Cross-Chain Bridge Flow Tracking
+-- Dune Analytics: Enhanced Cross-Chain Bridge Flow Tracking (21 Chains)
 -- ============================================================================
--- Erweiterte Bridge-Analyse mit 10+ benannten Bridge-Protokollen.
--- Trackt Stablecoin-Bewegungen ueber alle grossen Bridges hinweg und
--- zeigt wohin Kapital zwischen Chains fliesst.
+-- Erweiterte Bridge-Analyse mit 15+ benannten Bridge-Protokollen.
+-- Inkl. Scroll Bridge, Mantle Bridge, Blast Bridge, Mode Bridge.
 --
--- Unterstuetzte Bridges:
---   Stargate (LayerZero), Across, Hop Protocol, Wormhole, Synapse,
---   Celer cBridge, Multichain (Anyswap), Orbiter, Polygon Bridge,
---   Arbitrum Bridge, Optimism Bridge, Base Bridge, zkSync Bridge
---
--- Parameter (Dune UI):
---   {{period}} - Zeitraum, z.B. '30 days'
+-- Parameter: {{period}}
 -- ============================================================================
 
 WITH stablecoins AS (
@@ -24,7 +17,9 @@ WITH stablecoins AS (
         ('USDT', 'avalanche_c', 0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7, 6),
         ('USDT', 'base',        0xfde4c96c8593536e31f229ea8f37b2ada2699bb2, 6),
         ('USDT', 'gnosis',      0x4ecaba5870353805a9f068101a40e0f32ed605c6, 6),
-        ('USDT', 'fantom',      0x049d68029688eabf473097a2fc38ef61633a3c7a, 6),
+        ('USDT', 'scroll',      0xf55bec9cafdbe8730f096aa55dad6d22d44099df, 6),
+        ('USDT', 'mantle',      0x201eba5cc46d216ce6dc03f6a759e8e766e956ae, 6),
+        ('USDT', 'zkevm',       0x1e4a5963abfd975d8c9021ce480b42188849d41d, 6),
         ('USDC', 'ethereum',    0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48, 6),
         ('USDC', 'bnb',         0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d, 18),
         ('USDC', 'polygon',     0x3c499c542cef5e3811e1192ce70d8cc03d5c3359, 6),
@@ -35,11 +30,16 @@ WITH stablecoins AS (
         ('USDC', 'gnosis',      0xddafbb505ad214d7b80b1f830fccc89b60fb7a83, 6),
         ('USDC', 'zksync',      0x1d17cbcf0d6d143135ae902365d2e5e2a16538d4, 6),
         ('USDC', 'linea',       0x176211869ca2b568f2a7d4ee941e073a821ee1ff, 6),
+        ('USDC', 'scroll',      0x06efdbff2a14a7c8e15944d1f4a48f9f95f663a4, 6),
+        ('USDC', 'mantle',      0x09bc4e0d10e52d8da8127c33f8e2be0ee0064622, 6),
+        ('USDC', 'blast',       0x4300000000000000000000000000000000000004, 18),
+        ('USDC', 'mode',        0xd988097fb8612cc24eec14542bc03424c656005f, 6),
         ('DAI',  'ethereum',    0x6b175474e89094c44da98b954eedeac495271d0f, 18),
         ('DAI',  'polygon',     0x8f3cf7ad23cd3cadbd9735aff958023239c6a063, 18),
         ('DAI',  'arbitrum',    0xda10009cbd5d07dd0cecc66161fc93d7c9000da1, 18),
         ('DAI',  'optimism',    0xda10009cbd5d07dd0cecc66161fc93d7c9000da1, 18),
-        ('DAI',  'gnosis',      0x44fa8e6f47987339850636f88629646662444217, 18)
+        ('DAI',  'gnosis',      0x44fa8e6f47987339850636f88629646662444217, 18),
+        ('USDB', 'blast',       0x4300000000000000000000000000000000000003, 18)
     ) AS t(symbol, blockchain, contract_address, decimals)
 ),
 
@@ -47,7 +47,6 @@ WITH stablecoins AS (
 -- Bekannte Bridge-Adressen (manuell + labels.addresses)
 -- =====================================================================
 known_bridges AS (
-    -- Manuelle Liste der wichtigsten Bridge-Contracts
     SELECT * FROM (VALUES
         -- Stargate / LayerZero
         ('ethereum',    0x8731d54e9d02c286767d56ac03e8037c07e01e98, 'Stargate Router',        'Stargate'),
@@ -59,6 +58,8 @@ known_bridges AS (
         ('avalanche_c', 0x1205f31718499dbf1fca446663b532ef87481fe1, 'Stargate USDC Pool',     'Stargate'),
         ('base',        0x4c80e24119cfb836cdf0a6b53dc23f04f7e652ca, 'Stargate USDC Pool',     'Stargate'),
         ('bnb',         0x98a5737749490856b401db5dc27f522fc314a4e7, 'Stargate USDT Pool',     'Stargate'),
+        ('scroll',      0x3fc69cf04cfb316e54e18dbed6e3985a22412898, 'Stargate Pool',          'Stargate'),
+        ('mantle',      0x2b4ba65168f81a2ef3a2b78e684139a0e1a72420, 'Stargate Pool',          'Stargate'),
 
         -- Across Protocol
         ('ethereum',    0x5c7bcd6e7de5423a257d81b442095a1a6ced35c5, 'Across SpokePool',       'Across'),
@@ -66,6 +67,10 @@ known_bridges AS (
         ('optimism',    0x6f26bf09b1c792e3228e5467807a900a503c0281, 'Across SpokePool',       'Across'),
         ('polygon',     0x9295ee1d8c5b022be115a2ad3c30c72e34e7f096, 'Across SpokePool',       'Across'),
         ('base',        0x09aea4b2242abc8bb4bb78d537a67a245a7bec64, 'Across SpokePool',       'Across'),
+        ('linea',       0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75, 'Across SpokePool',       'Across'),
+        ('scroll',      0x3bad7ad0728f9917d1bf08af5782dcbd516cdd96, 'Across SpokePool',       'Across'),
+        ('blast',       0x2d509190ed0172ba588407d4c2df918f3f9e1f60, 'Across SpokePool',       'Across'),
+        ('mode',        0x3bad7ad0728f9917d1bf08af5782dcbd516cdd96, 'Across SpokePool',       'Across'),
 
         -- Hop Protocol
         ('ethereum',    0x3666f603cc164936c1b87e207f36beba4ac5f18a, 'Hop USDC Bridge',        'Hop'),
@@ -87,6 +92,8 @@ known_bridges AS (
         ('bnb',         0xd123f70ae324d34a9e76b67a27bf77593ba8749f, 'Synapse Bridge',         'Synapse'),
         ('base',        0xf07d1c752fab503e47fef309bf14fbdd3e867089, 'Synapse Bridge',         'Synapse'),
         ('fantom',      0xaf41a65f786339e7911f4acdad6bd49426f2dc36, 'Synapse Bridge',         'Synapse'),
+        ('blast',       0x55769baf6ec39b3bf4aae948eb890ea33307ef3c, 'Synapse Bridge',         'Synapse'),
+        ('scroll',      0x55769baf6ec39b3bf4aae948eb890ea33307ef3c, 'Synapse Bridge',         'Synapse'),
 
         -- Celer cBridge
         ('ethereum',    0x5427fefa711eff984124bfbb1ab6fbf5e3da1820, 'Celer cBridge',          'Celer'),
@@ -95,16 +102,22 @@ known_bridges AS (
         ('polygon',     0x88dcdc47d2f83a99cf0000fdf667a468bb958a78, 'Celer cBridge',          'Celer'),
         ('bnb',         0xdd90e5e87a2081dcf0391920868ebc2ffb81a1af, 'Celer cBridge',          'Celer'),
         ('avalanche_c', 0xef3c714c9425a8f3697a9c969dc1af30ba82e5d4, 'Celer cBridge',          'Celer'),
+        ('scroll',      0x9b36f165bab9ebe611d491180418d8de4b8f3a1f, 'Celer cBridge',          'Celer'),
+        ('mantle',      0x9b36f165bab9ebe611d491180418d8de4b8f3a1f, 'Celer cBridge',          'Celer'),
 
-        -- Native L2 Bridges
+        -- Canonical L1<->L2 Bridges
         ('ethereum',    0x99c9fc46f92e8a1c0dec1b1747d010903e884be1, 'Optimism Gateway',       'Optimism Bridge'),
         ('ethereum',    0x8315177ab297ba92a06054ce80a67ed4dbd7ed3a, 'Arbitrum Bridge',        'Arbitrum Bridge'),
         ('ethereum',    0xa0c68c638235ee32657e8f720a23cec1bfc6c9a8, 'Polygon Bridge',         'Polygon Bridge'),
+        ('ethereum',    0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf, 'Polygon ERC20 Bridge',   'Polygon Bridge'),
         ('ethereum',    0x3154cf16ccdb4c6d922629664174b904d80f2c35, 'Base Bridge',            'Base Bridge'),
         ('ethereum',    0x32400084c286cf3e17e7b677ea9583e60a000324, 'zkSync Bridge',          'zkSync Bridge'),
         ('ethereum',    0xd19d4b5d358258f05d7b411e21a1460d11b0876f, 'Linea Bridge',           'Linea Bridge'),
         ('ethereum',    0x2a3dd3eb832af982ec71669e178424b10dca2ede, 'Polygon zkEVM Bridge',   'Polygon zkEVM Bridge'),
-        ('ethereum',    0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf, 'Polygon ERC20 Bridge',   'Polygon Bridge'),
+        ('ethereum',    0xd8a791fe2be73eb6e6cf1eb0cb3f36adc9b3f8f9, 'Scroll Bridge',          'Scroll Bridge'),
+        ('ethereum',    0x95fc37a27a2f68e3a647cdc081f0a89bb47c3012, 'Mantle Bridge',          'Mantle Bridge'),
+        ('ethereum',    0x3a05e5d33d7ab3864d53aaec93c8301c1fa49115, 'Blast Bridge',           'Blast Bridge'),
+        ('ethereum',    0x735adb48095ff90ba4141afed9de7e862ff9a68c, 'Mode Bridge',            'Mode Bridge'),
 
         -- Orbiter Finance
         ('ethereum',    0x80c67432656d59144ceff962e8faf8926599bcf8, 'Orbiter Bridge',         'Orbiter'),
@@ -116,9 +129,7 @@ known_bridges AS (
 
     -- Dynamische Labels aus Dune
     SELECT
-        blockchain,
-        address,
-        name,
+        blockchain, address, name,
         COALESCE(
             CASE
                 WHEN LOWER(name) LIKE '%stargate%'  THEN 'Stargate'
@@ -129,37 +140,37 @@ known_bridges AS (
                 WHEN LOWER(name) LIKE '%celer%'     THEN 'Celer'
                 WHEN LOWER(name) LIKE '%orbiter%'   THEN 'Orbiter'
                 WHEN LOWER(name) LIKE '%multichain%' OR LOWER(name) LIKE '%anyswap%' THEN 'Multichain'
+                WHEN LOWER(name) LIKE '%scroll%bridge%' THEN 'Scroll Bridge'
+                WHEN LOWER(name) LIKE '%mantle%bridge%' THEN 'Mantle Bridge'
+                WHEN LOWER(name) LIKE '%blast%bridge%' THEN 'Blast Bridge'
+                WHEN LOWER(name) LIKE '%mode%bridge%' THEN 'Mode Bridge'
                 WHEN LOWER(name) LIKE '%polygon%bridge%' THEN 'Polygon Bridge'
                 WHEN LOWER(name) LIKE '%arbitrum%bridge%' THEN 'Arbitrum Bridge'
                 WHEN LOWER(name) LIKE '%optimism%' OR LOWER(name) LIKE '%op bridge%' THEN 'Optimism Bridge'
                 WHEN LOWER(name) LIKE '%base%bridge%' THEN 'Base Bridge'
                 WHEN LOWER(name) LIKE '%zksync%'    THEN 'zkSync Bridge'
+                WHEN LOWER(name) LIKE '%linea%'     THEN 'Linea Bridge'
                 ELSE 'Other'
-            END,
-            'Other'
+            END, 'Other'
         ) AS bridge_protocol
     FROM labels.addresses
     WHERE category = 'bridge'
         AND blockchain IN (
-            'ethereum', 'bnb', 'polygon', 'arbitrum', 'optimism',
-            'base', 'avalanche_c', 'gnosis', 'fantom', 'celo',
-            'zksync', 'linea'
+            'ethereum', 'bnb', 'polygon', 'arbitrum', 'optimism', 'base',
+            'avalanche_c', 'gnosis', 'fantom', 'celo', 'zksync', 'linea',
+            'scroll', 'mantle', 'blast', 'mode', 'zkevm'
         )
 ),
 
--- Dedupliziere Bridge-Adressen
 bridge_addresses AS (
     SELECT DISTINCT blockchain, address, name, bridge_protocol
     FROM known_bridges
 ),
 
--- Transfers an/von Bridge-Adressen
 bridge_transfers AS (
     SELECT
         DATE_TRUNC('day', t.block_time) AS day,
-        t.block_time,
-        t.blockchain,
-        s.symbol,
+        t.blockchain, s.symbol,
         CAST(t.amount_raw AS DOUBLE) / POWER(10, s.decimals) AS amount,
         t.tx_hash,
         CASE
@@ -167,12 +178,10 @@ bridge_transfers AS (
             WHEN ba_from.address IS NOT NULL AND ba_to.address IS NULL THEN 'from_bridge'
             WHEN ba_from.address IS NOT NULL AND ba_to.address IS NOT NULL THEN 'bridge_internal'
         END AS direction,
-        COALESCE(ba_to.bridge_protocol, ba_from.bridge_protocol) AS bridge_protocol,
-        COALESCE(ba_to.name, ba_from.name) AS bridge_name
+        COALESCE(ba_to.bridge_protocol, ba_from.bridge_protocol) AS bridge_protocol
     FROM tokens.transfers t
     INNER JOIN stablecoins s
-        ON t.blockchain = s.blockchain
-        AND t.contract_address = s.contract_address
+        ON t.blockchain = s.blockchain AND t.contract_address = s.contract_address
     LEFT JOIN bridge_addresses ba_to
         ON t.blockchain = ba_to.blockchain AND t.to = ba_to.address
     LEFT JOIN bridge_addresses ba_from
@@ -182,19 +191,11 @@ bridge_transfers AS (
         AND (ba_to.address IS NOT NULL OR ba_from.address IS NOT NULL)
 ),
 
--- =====================================================================
--- Aggregation pro Tag / Chain / Bridge-Protokoll
--- =====================================================================
 daily_bridge AS (
     SELECT
-        day,
-        blockchain,
-        symbol,
-        bridge_protocol,
-        -- Outgoing: Tokens verlassen die Chain via Bridge
+        day, blockchain, symbol, bridge_protocol,
         SUM(CASE WHEN direction = 'to_bridge' THEN amount ELSE 0 END)   AS outgoing_volume,
         COUNT(CASE WHEN direction = 'to_bridge' THEN 1 END)             AS outgoing_txs,
-        -- Incoming: Tokens betreten die Chain via Bridge
         SUM(CASE WHEN direction = 'from_bridge' THEN amount ELSE 0 END) AS incoming_volume,
         COUNT(CASE WHEN direction = 'from_bridge' THEN 1 END)           AS incoming_txs
     FROM bridge_transfers
@@ -203,30 +204,19 @@ daily_bridge AS (
 )
 
 SELECT
-    day,
-    blockchain,
-    symbol,
-    bridge_protocol,
-    outgoing_volume,
-    incoming_volume,
+    day, blockchain, symbol, bridge_protocol,
+    outgoing_volume, incoming_volume,
     incoming_volume - outgoing_volume AS net_flow,
-    outgoing_txs,
-    incoming_txs,
-    -- Kumulativer Net Flow pro Bridge/Chain
+    outgoing_txs, incoming_txs,
     SUM(incoming_volume - outgoing_volume) OVER (
-        PARTITION BY blockchain, symbol, bridge_protocol
-        ORDER BY day
+        PARTITION BY blockchain, symbol, bridge_protocol ORDER BY day
     ) AS cumulative_net_flow,
-    -- 7-Tage Rolling Net Flow
     SUM(incoming_volume - outgoing_volume) OVER (
-        PARTITION BY blockchain, symbol, bridge_protocol
-        ORDER BY day
+        PARTITION BY blockchain, symbol, bridge_protocol ORDER BY day
         ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
     ) AS net_flow_7d,
-    -- Anteil des Bridge-Protokolls am Gesamtvolumen der Chain
     (outgoing_volume + incoming_volume) / NULLIF(
-        SUM(outgoing_volume + incoming_volume) OVER (PARTITION BY day, blockchain),
-        0
+        SUM(outgoing_volume + incoming_volume) OVER (PARTITION BY day, blockchain), 0
     ) * 100 AS bridge_market_share_pct,
     CASE
         WHEN incoming_volume - outgoing_volume > 0 THEN 'net_inflow'
