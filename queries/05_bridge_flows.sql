@@ -28,51 +28,90 @@ WITH stablecoins AS (
         ('DAI',  'ethereum',    0x6b175474e89094c44da98b954eedeac495271d0f, 18),
         ('DAI',  'polygon',     0x8f3cf7ad23cd3cadbd9735aff958023239c6a063, 18),
         ('DAI',  'arbitrum',    0xda10009cbd5d07dd0cecc66161fc93d7c9000da1, 18),
-        ('DAI',  'optimism',    0xda10009cbd5d07dd0cecc66161fc93d7c9000da1, 18)
+        ('DAI',  'optimism',    0xda10009cbd5d07dd0cecc66161fc93d7c9000da1, 18),
+        ('DAI',  'base',        0x50c5725949a6f0c72e6c4a641f24049a917db0cb, 18),
+        ('USDS', 'ethereum',    0xdc035d45d973e3ec169d2276ddab16f1e407384f, 18),
+        ('FRAX', 'ethereum',    0x853d955acef822db058eb8505911ed77f175b99e, 18),
+        ('FRAX', 'arbitrum',    0x17fc002b466eec40dae837fc4be5c67993ddbd6f, 18),
+        ('FRAX', 'optimism',    0x2e3d870790dc77a83dd1d18184acc7439a53f475, 18),
+        ('GHO',  'ethereum',    0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f, 18),
+        ('crvUSD','ethereum',   0xf939e0a03fb07f59a73314e73794be0e57ac1b4e, 18),
+        ('PYUSD','ethereum',    0x6c3ea9036406852006290770bedfcaba0e23a0e8, 6),
+        ('USDe', 'ethereum',    0x4c9edd5852cd905f086c759e8383e09bff1e68b3, 18),
+        ('FDUSD','ethereum',    0xc5f0f7b66764f6ec8c8dff7ba683102295e16409, 18),
+        ('FDUSD','bnb',         0xc5f0f7b66764f6ec8c8dff7ba683102295e16409, 18),
+        ('LUSD', 'ethereum',    0x5f98805a4e8be255a32880fdec7f6728c6568ba0, 18),
+        ('TUSD', 'ethereum',    0x0000000000085d4780b73119b644ae5ecd22b376, 18),
+        ('TUSD', 'bnb',         0x40af3827f39d0eacbf4a168f8d4ee67c121d11c9, 18)
     ) AS t(symbol, blockchain, contract_address, decimals)
 ),
 
 -- Bekannte Bridge-Adressen aus Dune Labels
+-- Dedupliziert per ROW_NUMBER um Row-Duplikation bei JOINs zu vermeiden
 bridge_addresses AS (
     SELECT
         blockchain,
         address,
         name
-    FROM labels.addresses
-    WHERE category = 'bridge'
-        AND blockchain IN ('ethereum', 'bnb', 'polygon', 'arbitrum', 'optimism', 'base', 'avalanche_c')
+    FROM (
+        SELECT
+            blockchain,
+            address,
+            name,
+            ROW_NUMBER() OVER (PARTITION BY blockchain, address ORDER BY name) AS rn
+        FROM labels.addresses
+        WHERE category = 'bridge'
+            AND blockchain IN ('ethereum', 'bnb', 'polygon', 'arbitrum', 'optimism', 'base', 'avalanche_c')
+    )
+    WHERE rn = 1
 ),
 
 -- Transfers an/von Bridge-Adressen
+-- Nutzt UNION ALL um bridge-to-bridge Transfers korrekt als zwei Events zu erfassen
 bridge_transfers AS (
+    -- Outgoing: Tokens gehen AN eine Bridge
     SELECT
         DATE_TRUNC('day', t.block_time) AS day,
         t.blockchain,
         s.symbol,
         CAST(t.amount_raw AS DOUBLE) / POWER(10, s.decimals) AS amount,
         t.tx_hash,
-        -- Richtung bestimmen
-        CASE
-            WHEN ba_to.address IS NOT NULL THEN 'to_bridge'
-            WHEN ba_from.address IS NOT NULL THEN 'from_bridge'
-        END AS direction,
-        -- Bridge-Name
-        COALESCE(ba_to.name, ba_from.name) AS bridge_name,
+        'to_bridge' AS direction,
+        ba_to.name AS bridge_name,
         t."from" AS sender,
         t.to AS receiver
     FROM tokens.transfers t
     INNER JOIN stablecoins s
         ON t.blockchain = s.blockchain
         AND t.contract_address = s.contract_address
-    LEFT JOIN bridge_addresses ba_to
+    INNER JOIN bridge_addresses ba_to
         ON t.blockchain = ba_to.blockchain
         AND t.to = ba_to.address
-    LEFT JOIN bridge_addresses ba_from
+    WHERE t.block_time >= NOW() - INTERVAL '{{period}}'
+        AND t.amount_raw > 0
+
+    UNION ALL
+
+    -- Incoming: Tokens kommen VON einer Bridge
+    SELECT
+        DATE_TRUNC('day', t.block_time) AS day,
+        t.blockchain,
+        s.symbol,
+        CAST(t.amount_raw AS DOUBLE) / POWER(10, s.decimals) AS amount,
+        t.tx_hash,
+        'from_bridge' AS direction,
+        ba_from.name AS bridge_name,
+        t."from" AS sender,
+        t.to AS receiver
+    FROM tokens.transfers t
+    INNER JOIN stablecoins s
+        ON t.blockchain = s.blockchain
+        AND t.contract_address = s.contract_address
+    INNER JOIN bridge_addresses ba_from
         ON t.blockchain = ba_from.blockchain
         AND t."from" = ba_from.address
     WHERE t.block_time >= NOW() - INTERVAL '{{period}}'
         AND t.amount_raw > 0
-        AND (ba_to.address IS NOT NULL OR ba_from.address IS NOT NULL)
 ),
 
 -- Taegliche Bridge-Aggregation

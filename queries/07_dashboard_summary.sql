@@ -29,15 +29,20 @@ WITH stablecoins AS (
         ('DAI',  'MakerDAO',     'decentralized','polygon',    0x8f3cf7ad23cd3cadbd9735aff958023239c6a063, 18),
         ('DAI',  'MakerDAO',     'decentralized','arbitrum',   0xda10009cbd5d07dd0cecc66161fc93d7c9000da1, 18),
         ('DAI',  'MakerDAO',     'decentralized','optimism',   0xda10009cbd5d07dd0cecc66161fc93d7c9000da1, 18),
+        ('DAI',  'MakerDAO',     'decentralized','base',       0x50c5725949a6f0c72e6c4a641f24049a917db0cb, 18),
         ('USDS', 'Sky',          'decentralized','ethereum',   0xdc035d45d973e3ec169d2276ddab16f1e407384f, 18),
         ('FRAX', 'Frax Finance', 'hybrid',       'ethereum',   0x853d955acef822db058eb8505911ed77f175b99e, 18),
+        ('FRAX', 'Frax Finance', 'hybrid',       'arbitrum',   0x17fc002b466eec40dae837fc4be5c67993ddbd6f, 18),
+        ('FRAX', 'Frax Finance', 'hybrid',       'optimism',   0x2e3d870790dc77a83dd1d18184acc7439a53f475, 18),
         ('GHO',  'Aave',         'decentralized','ethereum',   0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f, 18),
         ('crvUSD','Curve',       'decentralized','ethereum',   0xf939e0a03fb07f59a73314e73794be0e57ac1b4e, 18),
         ('PYUSD','PayPal',       'centralized',  'ethereum',   0x6c3ea9036406852006290770bedfcaba0e23a0e8, 6),
         ('USDe', 'Ethena',       'hybrid',       'ethereum',   0x4c9edd5852cd905f086c759e8383e09bff1e68b3, 18),
         ('FDUSD','First Digital','centralized',  'ethereum',   0xc5f0f7b66764f6ec8c8dff7ba683102295e16409, 18),
         ('FDUSD','First Digital','centralized',  'bnb',        0xc5f0f7b66764f6ec8c8dff7ba683102295e16409, 18),
-        ('LUSD', 'Liquity',      'decentralized','ethereum',   0x5f98805a4e8be255a32880fdec7f6728c6568ba0, 18)
+        ('LUSD', 'Liquity',      'decentralized','ethereum',   0x5f98805a4e8be255a32880fdec7f6728c6568ba0, 18),
+        ('TUSD', 'TrueUSD',     'centralized',  'ethereum',   0x0000000000085d4780b73119b644ae5ecd22b376, 18),
+        ('TUSD', 'TrueUSD',     'centralized',  'bnb',        0x40af3827f39d0eacbf4a168f8d4ee67c121d11c9, 18)
     ) AS t(symbol, issuer, category, blockchain, contract_address, decimals)
 ),
 
@@ -83,7 +88,8 @@ per_chain AS (
         SUM(CAST(t.amount_raw AS DOUBLE) / POWER(10, s.decimals)) AS chain_volume,
         COUNT(DISTINCT t.tx_hash) AS chain_txs,
         COUNT(DISTINCT s.symbol) AS stablecoins_active,
-        COUNT(DISTINCT t."from") + COUNT(DISTINCT t.to) AS unique_addresses
+        COUNT(DISTINCT t."from") AS unique_senders,
+        COUNT(DISTINCT t.to) AS unique_receivers
     FROM tokens.transfers t
     INNER JOIN stablecoins s
         ON t.blockchain = s.blockchain
@@ -107,10 +113,13 @@ global_kpis AS (
 )
 
 -- =====================================================================
--- Ergebnis: Stablecoin-Ranking mit Marktanteilen
+-- Ergebnis: Stablecoin-Ranking mit Marktanteilen + Chain KPIs + Global KPIs
 -- =====================================================================
+
+-- Per-Stablecoin KPIs
 SELECT
-    ps.symbol,
+    'per_stablecoin' AS metric_type,
+    ps.symbol AS name,
     ps.issuer,
     ps.category,
     ps.total_volume,
@@ -121,13 +130,56 @@ SELECT
     ps.total_minted,
     ps.total_burned,
     ps.total_minted - ps.total_burned AS net_supply_change,
-    -- Marktanteil nach Volumen
     ps.total_volume / NULLIF(g.global_volume, 0) * 100 AS volume_market_share_pct,
-    -- Marktanteil nach Transaktionen
     CAST(ps.total_txs AS DOUBLE) / NULLIF(g.global_txs, 0) * 100 AS tx_market_share_pct,
-    -- Rang
     ROW_NUMBER() OVER (ORDER BY ps.total_volume DESC) AS volume_rank,
     ROW_NUMBER() OVER (ORDER BY ps.total_txs DESC) AS tx_rank
 FROM per_stablecoin ps
 CROSS JOIN global_kpis g
-ORDER BY ps.total_volume DESC
+
+UNION ALL
+
+-- Per-Chain KPIs
+SELECT
+    'per_chain' AS metric_type,
+    pc.blockchain AS name,
+    NULL AS issuer,
+    NULL AS category,
+    pc.chain_volume AS total_volume,
+    pc.chain_txs AS total_txs,
+    pc.unique_senders,
+    pc.unique_receivers,
+    pc.stablecoins_active AS active_chains,
+    NULL AS total_minted,
+    NULL AS total_burned,
+    NULL AS net_supply_change,
+    pc.chain_volume / NULLIF(g.global_volume, 0) * 100 AS volume_market_share_pct,
+    CAST(pc.chain_txs AS DOUBLE) / NULLIF(g.global_txs, 0) * 100 AS tx_market_share_pct,
+    NULL AS volume_rank,
+    NULL AS tx_rank
+FROM per_chain pc
+CROSS JOIN global_kpis g
+
+UNION ALL
+
+-- Global KPIs
+SELECT
+    'global' AS metric_type,
+    'all' AS name,
+    NULL AS issuer,
+    NULL AS category,
+    g.global_volume AS total_volume,
+    g.global_txs AS total_txs,
+    NULL AS unique_senders,
+    NULL AS unique_receivers,
+    NULL AS active_chains,
+    g.global_minted AS total_minted,
+    g.global_burned AS total_burned,
+    g.global_net_supply_change AS net_supply_change,
+    100.0 AS volume_market_share_pct,
+    100.0 AS tx_market_share_pct,
+    NULL AS volume_rank,
+    NULL AS tx_rank
+FROM global_kpis g
+
+ORDER BY metric_type, total_volume DESC
