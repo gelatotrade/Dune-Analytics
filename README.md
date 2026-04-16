@@ -428,6 +428,59 @@ flowchart LR
 - **Forking:** Other users can fork your dashboard and customize it
 - **API Access:** Query results can be retrieved via the Dune API (v3) as JSON for external dashboards
 
+## Code Quality & Bug Fixes
+
+The pipeline went through multiple debugging rounds to ensure data accuracy. Below is a summary of all bugs that were identified and fixed.
+
+### Round 1: Data Consistency & Structural Bugs
+
+| # | Issue | Affected Queries | Fix |
+|---|-------|------------------|-----|
+| 1 | **Row duplication via `labels.addresses` JOINs** | Q03, Q05, Q06 | Dune labels can have multiple rows per address (different categories/names). LEFT JOINs duplicated transfers and inflated volumes. Fixed with `ROW_NUMBER() OVER (PARTITION BY blockchain, address)` deduplication. |
+| 2 | **Inconsistent stablecoin coverage** | Q01-Q07 | Queries had different subsets of the reference table. Missing: TUSD entirely, DAI on Base, FRAX on Arbitrum/Optimism. Q03 had only 12 of 32 entries. Aligned all queries to match Q00 reference. |
+| 3 | **Unused `per_chain` CTE in dashboard summary** | Q07 | Chain-level KPIs were computed but never output. Added via `UNION ALL` with `metric_type='per_chain'`. |
+| 4 | **`unique_addresses` double-counting** | Q07 | `COUNT(DISTINCT from) + COUNT(DISTINCT to)` counted users who both send and receive twice. Split into separate `unique_senders` and `unique_receivers` columns. |
+| 5 | **Missing global KPIs in output** | Q07 | `global_kpis` CTE was only used for market share calculations. Added dedicated `metric_type='global'` row so dashboard counters can filter on them. |
+| 6 | **Dead code `address_labels` CTE** | Q01 | CTE was defined but never used. Removed. |
+
+### Round 2: Logic & Calculation Bugs
+
+| # | Issue | Affected Queries | Fix |
+|---|-------|------------------|-----|
+| 7 | **`daily_change_pct` returned fraction instead of percentage** | Q02 | Formula returned 0.05 but column name suggested 5.0. Multiplied by 100 to match the name. |
+| 8 | **DEX/Bridge flows included internal transfers** | Q03 | Unlike CEX flows (which correctly excluded `cex_to_cex`), DEX and Bridge flows counted `dex-to-dex` and `bridge-to-bridge` transfers, inflating volumes. Added matching exclusion logic. |
+| 9 | **Bridge-to-bridge transfers only counted as `to_bridge`** | Q05 | `CASE` expression with LEFT JOINs only captured the receiving bridge, missing the sending bridge leg. Refactored to `UNION ALL` with two `INNER JOIN` queries to capture both legs correctly. |
+| 10 | **Dead code `whale_summary` CTE + incorrect rank partition** | Q06 | CTE was computed but never selected. Additionally, `daily_rank` partitioned only by `(day, blockchain)`, mixing whales from all stablecoins. Removed dead code and added `symbol` to the partition. |
+
+### Round 3: Final Verification
+
+All queries were re-reviewed end-to-end. No additional bugs found. Verified:
+
+- All 8 queries have **consistent 32-entry stablecoin lists** matching `00_stablecoin_reference.sql`
+- **Label deduplication** via `ROW_NUMBER()` in Q03, Q05, Q06
+- **UNION ALL bridge logic** correctly captures both legs of bridge-to-bridge transfers
+- **Window functions** (moving averages, cumulative sums, rankings) are all correctly partitioned
+- **DuneSQL compatibility** verified: hex literals, `INTERVAL` syntax, `APPROX_PERCENTILE`, Dune Spells (`tokens.transfers`, `labels.addresses`)
+- **UNION ALL type compatibility** in Q07 (DOUBLE/BIGINT/NULL handled correctly by Trino)
+- **Mint/burn detection** (`0x0` and `0xdead` addresses) consistent across Q01, Q04, Q06, Q07
+
+### Code Quality Principles Applied
+
+```mermaid
+flowchart LR
+    A["Data Consistency\nReference Table\nas Source of Truth"] --> B
+    B["Deduplication\nROW_NUMBER on\nlabels.addresses"] --> C
+    C["Exclude Internals\ncex-to-cex, dex-to-dex\nbridge-to-bridge"] --> D
+    D["No Dead Code\nAll CTEs used\nin output"] --> E
+    E["Clear Column Names\nMatch semantics to\nunit/type"]
+
+    style A fill:#1a1a2e,stroke:#e94560,color:#fff
+    style B fill:#16213e,stroke:#0f3460,color:#fff
+    style C fill:#0f3460,stroke:#533483,color:#fff
+    style D fill:#533483,stroke:#e94560,color:#fff
+    style E fill:#e94560,stroke:#fff,color:#fff
+```
+
 ## Dune-Specific Tables
 
 The pipeline uses the following Dune Spells/tables:
