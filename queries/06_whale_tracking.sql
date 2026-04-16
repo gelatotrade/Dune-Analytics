@@ -96,25 +96,6 @@ whale_transfers AS (
         ON t.blockchain = lr.blockchain AND t.to = lr.address
     WHERE t.block_time >= NOW() - INTERVAL '{{period}}'
         AND CAST(t.amount_raw AS DOUBLE) / POWER(10, s.decimals) >= CAST('{{whale_threshold}}' AS DOUBLE)
-),
-
--- Whale-Aktivitaet Zusammenfassung
-whale_summary AS (
-    SELECT
-        DATE_TRUNC('day', block_time) AS day,
-        blockchain,
-        symbol,
-        transfer_category,
-        COUNT(*) AS whale_tx_count,
-        SUM(amount) AS whale_volume,
-        AVG(amount) AS avg_whale_size,
-        MAX(amount) AS max_whale_transfer
-    FROM whale_transfers
-    GROUP BY
-        DATE_TRUNC('day', block_time),
-        blockchain,
-        symbol,
-        transfer_category
 )
 
 -- Detaillierte Whale-Transfers (fuer Alert-Tabelle)
@@ -129,9 +110,9 @@ SELECT
     receiver_name,
     receiver_category,
     tx_hash,
-    -- Ranking nach Groesse
+    -- Ranking nach Groesse pro Tag/Chain/Stablecoin
     ROW_NUMBER() OVER (
-        PARTITION BY DATE_TRUNC('day', block_time), blockchain
+        PARTITION BY DATE_TRUNC('day', block_time), blockchain, symbol
         ORDER BY amount DESC
     ) AS daily_rank
 FROM whale_transfers

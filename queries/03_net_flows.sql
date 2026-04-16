@@ -115,26 +115,30 @@ cex_flows AS (
     GROUP BY day, blockchain, symbol
 ),
 
--- DEX Flows
+-- DEX Flows (interne dex-to-dex Transfers werden ausgeschlossen)
 dex_flows AS (
     SELECT
         day,
         blockchain,
         symbol,
-        SUM(CASE WHEN receiver_category = 'dex' THEN amount ELSE 0 END) AS dex_inflow,
-        SUM(CASE WHEN sender_category = 'dex' THEN amount ELSE 0 END)   AS dex_outflow
+        SUM(CASE WHEN receiver_category = 'dex' AND sender_category != 'dex'
+            THEN amount ELSE 0 END) AS dex_inflow,
+        SUM(CASE WHEN sender_category = 'dex' AND receiver_category != 'dex'
+            THEN amount ELSE 0 END) AS dex_outflow
     FROM transfers_labeled
     GROUP BY day, blockchain, symbol
 ),
 
--- Bridge Flows
+-- Bridge Flows (interne bridge-to-bridge Transfers werden ausgeschlossen)
 bridge_flows AS (
     SELECT
         day,
         blockchain,
         symbol,
-        SUM(CASE WHEN receiver_category = 'bridge' THEN amount ELSE 0 END) AS bridge_inflow,
-        SUM(CASE WHEN sender_category = 'bridge' THEN amount ELSE 0 END)   AS bridge_outflow
+        SUM(CASE WHEN receiver_category = 'bridge' AND sender_category != 'bridge'
+            THEN amount ELSE 0 END) AS bridge_inflow,
+        SUM(CASE WHEN sender_category = 'bridge' AND receiver_category != 'bridge'
+            THEN amount ELSE 0 END) AS bridge_outflow
     FROM transfers_labeled
     GROUP BY day, blockchain, symbol
 )

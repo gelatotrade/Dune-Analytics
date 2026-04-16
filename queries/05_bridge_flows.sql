@@ -67,35 +67,51 @@ bridge_addresses AS (
 ),
 
 -- Transfers an/von Bridge-Adressen
+-- Nutzt UNION ALL um bridge-to-bridge Transfers korrekt als zwei Events zu erfassen
 bridge_transfers AS (
+    -- Outgoing: Tokens gehen AN eine Bridge
     SELECT
         DATE_TRUNC('day', t.block_time) AS day,
         t.blockchain,
         s.symbol,
         CAST(t.amount_raw AS DOUBLE) / POWER(10, s.decimals) AS amount,
         t.tx_hash,
-        -- Richtung bestimmen
-        CASE
-            WHEN ba_to.address IS NOT NULL THEN 'to_bridge'
-            WHEN ba_from.address IS NOT NULL THEN 'from_bridge'
-        END AS direction,
-        -- Bridge-Name
-        COALESCE(ba_to.name, ba_from.name) AS bridge_name,
+        'to_bridge' AS direction,
+        ba_to.name AS bridge_name,
         t."from" AS sender,
         t.to AS receiver
     FROM tokens.transfers t
     INNER JOIN stablecoins s
         ON t.blockchain = s.blockchain
         AND t.contract_address = s.contract_address
-    LEFT JOIN bridge_addresses ba_to
+    INNER JOIN bridge_addresses ba_to
         ON t.blockchain = ba_to.blockchain
         AND t.to = ba_to.address
-    LEFT JOIN bridge_addresses ba_from
+    WHERE t.block_time >= NOW() - INTERVAL '{{period}}'
+        AND t.amount_raw > 0
+
+    UNION ALL
+
+    -- Incoming: Tokens kommen VON einer Bridge
+    SELECT
+        DATE_TRUNC('day', t.block_time) AS day,
+        t.blockchain,
+        s.symbol,
+        CAST(t.amount_raw AS DOUBLE) / POWER(10, s.decimals) AS amount,
+        t.tx_hash,
+        'from_bridge' AS direction,
+        ba_from.name AS bridge_name,
+        t."from" AS sender,
+        t.to AS receiver
+    FROM tokens.transfers t
+    INNER JOIN stablecoins s
+        ON t.blockchain = s.blockchain
+        AND t.contract_address = s.contract_address
+    INNER JOIN bridge_addresses ba_from
         ON t.blockchain = ba_from.blockchain
         AND t."from" = ba_from.address
     WHERE t.block_time >= NOW() - INTERVAL '{{period}}'
         AND t.amount_raw > 0
-        AND (ba_to.address IS NOT NULL OR ba_from.address IS NOT NULL)
 ),
 
 -- Taegliche Bridge-Aggregation

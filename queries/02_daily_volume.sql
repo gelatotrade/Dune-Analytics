@@ -106,10 +106,10 @@ SELECT
         ORDER BY day
         ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
     ) AS volume_30d_ma,
-    -- Taegl. Veraenderung in %
-    daily_volume / NULLIF(
+    -- Taegl. Veraenderung in % (z.B. 5.0 = +5%)
+    (daily_volume / NULLIF(
         LAG(daily_volume) OVER (PARTITION BY blockchain, symbol ORDER BY day),
         0
-    ) - 1 AS daily_change_pct
+    ) - 1) * 100 AS daily_change_pct
 FROM daily_agg
 ORDER BY day DESC, daily_volume DESC
